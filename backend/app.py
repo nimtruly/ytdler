@@ -5,6 +5,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,6 +51,30 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+# Lifespan event handler
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler."""
+    # Startup
+    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+    logger.info(f"Download directory: {settings.download_dir}")
+    logger.info(f"Log directory: {settings.log_dir}")
+    logger.info(f"Max concurrent downloads: {settings.max_concurrent_downloads}")
+    logger.info(f"Max file size: {settings.max_file_size_mb} MB")
+    
+    # Verify yt-dlp is available
+    try:
+        import yt_dlp
+        logger.info(f"yt-dlp version: {yt_dlp.version.__version__}")
+    except Exception as e:
+        logger.error(f"Failed to import yt-dlp: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info(f"Shutting down {settings.app_name}")
+
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.app_name,
@@ -77,6 +102,7 @@ app = FastAPI(
     """,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 
@@ -134,27 +160,19 @@ async def health_check():
     )
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Application startup event."""
-    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    logger.info(f"Download directory: {settings.download_dir}")
-    logger.info(f"Log directory: {settings.log_dir}")
-    logger.info(f"Max concurrent downloads: {settings.max_concurrent_downloads}")
-    logger.info(f"Max file size: {settings.max_file_size_mb} MB")
+@app.get("/health", response_model=HealthResponse, tags=["Health"])
+async def health_check():
+    """
+    Health check endpoint.
     
-    # Verify yt-dlp is available
-    try:
-        import yt_dlp
-        logger.info(f"yt-dlp version: {yt_dlp.version.__version__}")
-    except Exception as e:
-        logger.error(f"Failed to import yt-dlp: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown event."""
-    logger.info(f"Shutting down {settings.app_name}")
+    Returns:
+        Health status information
+    """
+    return HealthResponse(
+        status="healthy",
+        version=settings.app_version,
+        timestamp=datetime.utcnow().isoformat()
+    )
 
 
 if __name__ == "__main__":

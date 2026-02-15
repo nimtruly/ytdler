@@ -3,7 +3,7 @@ Download queue manager for handling concurrent downloads.
 """
 import asyncio
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from datetime import datetime, timedelta
 
 from backend.config import settings
@@ -103,7 +103,7 @@ class DownloadQueue:
         
         return progress or DownloadProgress(download_id)
     
-    def get_queue_status(self) -> Dict[str, any]:
+    def get_queue_status(self) -> Dict[str, Any]:
         """
         Get current queue status.
         
