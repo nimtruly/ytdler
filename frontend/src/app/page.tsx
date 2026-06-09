@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -130,6 +131,8 @@ export default function Home() {
               <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
                 <VideoPreview video={videoData} />
                 <DownloadPanel 
+                  key={videoData?.id || "panel"}
+                  videoData={videoData}
                   onDownload={handleDownload} 
                   isDownloading={isDownloading} 
                 />

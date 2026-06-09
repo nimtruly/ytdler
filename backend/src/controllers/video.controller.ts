@@ -41,7 +41,7 @@ export class VideoController {
 
   downloadVideo = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { url, formatId } = req.body as DownloadRequest & {
+      const { url, formatId, format, quality } = req.body as DownloadRequest & {
         formatId?: string;
       };
 
@@ -62,7 +62,7 @@ export class VideoController {
       console.log("Download request for URL:", url);
       const { filePath, filename } = await this.youtubeService.downloadVideo(
         url,
-        formatId,
+        { formatId, format, quality },
       );
       console.log("File ready for streaming:", filePath);
 

@@ -47,7 +47,7 @@ export class YouTubeService {
     await this.ensureYtDlpExists();
 
     try {
-      const info = await this.ytDlp.getVideoInfo(url);
+      const info = await this.ytDlp.getVideoInfo([url, "--js-runtimes", "node"]);
 
       // Extract relevant format information
       const formats: VideoFormat[] = (info.formats || [])
@@ -84,11 +84,19 @@ export class YouTubeService {
 
   async downloadVideo(
     url: string,
-    formatId?: string,
+    options?: {
+      formatId?: string;
+      format?: string;
+      quality?: string;
+    },
   ): Promise<{ filePath: string; filename: string }> {
     await this.ensureYtDlpExists();
 
     try {
+      const formatId = options?.formatId;
+      const format = options?.format;
+      const quality = options?.quality;
+
       // Generate unique filename to avoid conflicts
       const timestamp = Date.now();
       const outputTemplate = path.join(
@@ -96,13 +104,28 @@ export class YouTubeService {
         `${timestamp}_%(title)s.%(ext)s`,
       );
 
-      const args = ["--output", outputTemplate, "--no-playlist"];
+      const args = ["--output", outputTemplate, "--no-playlist", "--js-runtimes", "node"];
 
       if (formatId) {
-        args.push("--format", formatId);
+        // If a specific format is selected, append +bestaudio/best to ensure video formats have audio
+        // but keep it as-is for pure audio streams
+        args.push("--format", `${formatId}+bestaudio/best/best`);
+      } else if (format === "audio") {
+        args.push("--format", "bestaudio/best");
+        args.push("--extract-audio");
+        args.push("--audio-format", "mp3");
       } else {
-        // Default to best quality
-        args.push("--format", "bestvideo+bestaudio/best");
+        // Video download by quality
+        if (quality && quality !== "best") {
+          const height = parseInt(quality);
+          if (!isNaN(height)) {
+            args.push("--format", `bestvideo[height<=${height}]+bestaudio/best`);
+          } else {
+            args.push("--format", "bestvideo+bestaudio/best");
+          }
+        } else {
+          args.push("--format", "bestvideo+bestaudio/best");
+        }
       }
 
       args.push(url);
