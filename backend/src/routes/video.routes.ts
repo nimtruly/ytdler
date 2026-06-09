@@ -9,5 +9,6 @@ router.get('/info', videoController.getVideoInfo);
 
 // Download video
 router.post('/download', videoController.downloadVideo);
+router.get('/download', videoController.downloadVideo);
 
 export default router;

@@ -41,9 +41,10 @@ export class VideoController {
 
   downloadVideo = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { url, formatId, format, quality } = req.body as DownloadRequest & {
-        formatId?: string;
-      };
+      const url = (req.body?.url || req.query.url) as string;
+      const formatId = (req.body?.formatId || req.query.formatId) as string | undefined;
+      const format = (req.body?.format || req.query.format) as string | undefined;
+      const quality = (req.body?.quality || req.query.quality) as string | undefined;
 
       if (!url) {
         res.status(400).json({

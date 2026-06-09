@@ -97,6 +97,40 @@ export class YouTubeService {
       const format = options?.format;
       const quality = options?.quality;
 
+      // Determine quality suffix to append to filename
+      let suffix = "";
+      if (format === "audio") {
+        suffix = ` (${quality || "320kbps"})`;
+      } else {
+        if (quality && quality !== "best" && quality !== "highest") {
+          suffix = ` (${quality})`;
+        } else {
+          try {
+            // Get video info to find the actual max resolution for "best"/"highest"
+            const info = await this.getVideoInfo(url);
+            const heights = info.formats
+              ?.filter((f: any) => f.vcodec && f.vcodec !== "none")
+              ?.map((f: any) => {
+                const match = f.resolution.match(/(\d+)x(\d+)/);
+                if (match) return parseInt(match[2]);
+                const h = parseInt(f.resolution);
+                return isNaN(h) ? 0 : h;
+              }) || [];
+            const maxHeight = heights.length > 0 ? Math.max(...heights) : 0;
+            if (maxHeight > 0) {
+              if (maxHeight >= 8640) suffix = " (16K)";
+              else if (maxHeight >= 4320) suffix = " (8K)";
+              else if (maxHeight >= 2160) suffix = " (4K)";
+              else if (maxHeight >= 1440) suffix = " (1440p)";
+              else suffix = ` (${maxHeight}p)`;
+            }
+          } catch (e) {
+            console.error("Failed to fetch video info for suffix:", e);
+            suffix = " (Best)";
+          }
+        }
+      }
+
       // Generate unique filename to avoid conflicts
       const timestamp = Date.now();
       const outputTemplate = path.join(
@@ -156,8 +190,11 @@ export class YouTubeService {
       const downloadedFile = files[0];
       console.log("Found downloaded file:", downloadedFile.filename);
 
-      // Remove timestamp prefix from filename for cleaner download name
-      const cleanFilename = downloadedFile.filename.replace(/^\d+_/, "");
+      // Remove timestamp prefix from filename, split extension, and inject quality suffix
+      const baseFilename = downloadedFile.filename.replace(/^\d+_/, "");
+      const ext = path.extname(baseFilename);
+      const nameWithoutExt = path.basename(baseFilename, ext);
+      const cleanFilename = `${nameWithoutExt}${suffix}${ext}`;
 
       return {
         filePath: downloadedFile.path,

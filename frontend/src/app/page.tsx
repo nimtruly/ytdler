@@ -53,37 +53,30 @@ export default function Home() {
 
   const handleDownload = async (format: string, quality: string) => {
     setIsDownloading(true)
-    const downloadToast = toast.loading("Starting download...")
+    toast.success("Download triggered! The file will start downloading in the background.", { duration: 5000 })
     
     try {
-      const response = await fetch("http://localhost:3001/api/video/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: videoUrl, format, quality }),
-      })
+      const downloadUrl = `http://localhost:3001/api/video/download?url=${encodeURIComponent(videoUrl)}&format=${format}&quality=${quality}`;
       
-      if (!response.ok) throw new Error("Download failed")
-        
-      // Handle file download (blob)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      // Use title from videoData if available for filename
-      const ext = format === "audio" ? "mp3" : "mp4"
-      a.download = videoData?.title ? `${videoData.title}.${ext}` : `video.${ext}`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
+      // Trigger native browser download using a hidden iframe
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = downloadUrl;
+      document.body.appendChild(iframe);
       
-      toast.dismiss(downloadToast)
-      toast.success("Download success!")
+      // Clean up the iframe after a short delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 15000);
+      
     } catch (error) {
-      toast.dismiss(downloadToast)
-      toast.error("Download failed. Please try again.")
+      toast.error("Failed to trigger download.")
       console.error(error)
     } finally {
-      setIsDownloading(false)
+      // Release the loading spinner quickly so the UI remains active
+      setTimeout(() => {
+        setIsDownloading(false)
+      }, 1000)
     }
   }
 
